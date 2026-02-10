@@ -1,6 +1,8 @@
 import time
 import random
 import streamlit as st
+from PIL import Image, ImageDraw
+from streamlit_image_coordinates import streamlit_image_coordinates
 
 # ==============================
 # SHARED STATE (ALL USERS ON THIS SERVER)
