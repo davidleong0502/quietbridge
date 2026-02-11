@@ -562,68 +562,62 @@ def render_streak_card_polished(checkins: list[dict]):
 
     st.markdown("</div></div>", unsafe_allow_html=True)
 
-def _get_query_mood() -> str | None:
-    # Works across Streamlit versions
-    try:
-        qp = st.query_params  # new API
-        return qp.get("mood", None)
-    except Exception:
-        qp = st.experimental_get_query_params()
-        v = qp.get("mood", [None])
-        return v[0] if v else None
-
-def _set_query_mood(word: str | None):
-    try:
-        if word is None:
-            st.query_params.clear()
-        else:
-            st.query_params["mood"] = word
-    except Exception:
-        if word is None:
-            st.experimental_set_query_params()
-        else:
-            st.experimental_set_query_params(mood=word)
-
 def render_mood_tiles(mood_grid: list[list[str]], selected_mood: str | None):
-    # Colors tuned to match your 4x4 mood meter vibe
     COLORS = {
-        # Row 1 (high energy, pleasant-ish): warm
         "Excited":   ("#9F3B39", "#FFFFFF"),
         "Joyful":    ("#B76545", "#FFFFFF"),
         "Motivated": ("#D3A24A", "#1D1D1D"),
         "Inspired":  ("#E7CF5D", "#1D1D1D"),
-
-        # Row 2 (high energy, mixed): muted warm/olive
         "Tense":     ("#7C4B5B", "#FFFFFF"),
         "Alert":     ("#8D6A5B", "#FFFFFF"),
         "Engaged":   ("#A79A56", "#1D1D1D"),
         "Proud":     ("#C7BE58", "#1D1D1D"),
-
-        # Row 3 (low energy-ish, neutral pleasant): gray/green
         "Sad":       ("#6C6A88", "#FFFFFF"),
         "Calm":      ("#7B7E78", "#FFFFFF"),
         "Content":   ("#8F9966", "#1D1D1D"),
         "Peaceful":  ("#A6B26A", "#1D1D1D"),
-
-        # Row 4 (low energy): blue/green
         "Drained":   ("#4E89B0", "#FFFFFF"),
         "Tired":     ("#5E97A2", "#FFFFFF"),
         "Restful":   ("#6E9F86", "#FFFFFF"),
         "Serene":    ("#86A96B", "#1D1D1D"),
     }
 
-    # tiles grid
-    html = ['<div class="qb-mood-grid">']
-    for row in mood_grid:
-        for word in row:
+    for r, row in enumerate(mood_grid):
+        cols = st.columns(4, gap="small")
+        for c, word in enumerate(row):
             bg, fg = COLORS.get(word, ("#FFFFFF", "#111111"))
-            cls = "qb-tile selected" if word == selected_mood else "qb-tile"
-            # clicking sets query param -> rerun -> python picks it up
-            html.append(
-                f'<a class="{cls}" href="?mood={word}" style="background:{bg}; color:{fg};">{word}</a>'
-            )
-    html.append("</div>")
-    st.markdown("\n".join(html), unsafe_allow_html=True)
+
+            # style each button via markdown + container trick
+            with cols[c]:
+                selected = (word == selected_mood)
+                border = "4px solid rgba(255,255,255,0.70)" if selected else "2px solid rgba(255,255,255,0.55)"
+                shadow = "0 0 0 3px rgba(0,0,0,0.10), 0 16px 34px rgba(0,0,0,0.14)" if selected else "0 10px 24px rgba(0,0,0,0.07)"
+
+                st.markdown(
+                    f"""
+                    <style>
+                    div[data-testid="stButton"] > button#{word.replace(" ","_")}_{r}_{c} {{
+                        width: 100%;
+                        height: 84px;
+                        border-radius: 16px;
+                        background: {bg};
+                        color: {fg};
+                        font-weight: 800;
+                        font-size: 1.05rem;
+                        letter-spacing: -0.2px;
+                        border: {border};
+                        box-shadow: {shadow};
+                    }}
+                    </style>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+                if st.button(word, key=f"{word}_{r}_{c}"):
+                    st.session_state.selected_mood = word
+                    st.session_state.selected_mode = mood_to_num(word)
+                    st.rerun()
+
 
 
 # !!!!!!!!
