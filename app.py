@@ -51,6 +51,24 @@ def apply_quietbridge_theme():
             backdrop-filter: blur(8px);
         }
 
+        /* Sidebar text: force darker + full opacity */
+        section[data-testid="stSidebar"],
+        section[data-testid="stSidebar"] * {
+          color: #0F172A !important;
+          opacity: 1 !important;
+        }
+        
+        /* Radio labels in the sidebar (this is usually the culprit) */
+        section[data-testid="stSidebar"] label,
+        section[data-testid="stSidebar"] label * ,
+        section[data-testid="stSidebar"] [role="radiogroup"] label,
+        section[data-testid="stSidebar"] [role="radiogroup"] label * {
+          color: #0F172A !important;
+          opacity: 1 !important;
+          font-weight: 500 !important;
+        }
+
+
         /* Inputs */
         .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
             border-radius: 12px !important;
