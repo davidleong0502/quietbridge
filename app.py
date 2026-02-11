@@ -731,15 +731,8 @@ if page == "Home":
     mid = st.columns([1, 8, 1])
 
     with mid[1]:
-        # 1) pull selection from URL click (tile click)
-        if clicked in sum(mood_grid, []):  # flatten and validate
-            st.session_state.selected_mood = clicked
-            st.session_state.selected_mode = mood_to_num(clicked)
-
-        # 2) render the colored tile grid
         render_mood_tiles(mood_grid, st.session_state.selected_mood)
 
-        # 3) show selected + clear selection button
         cA, cB = st.columns([3, 1])
         with cA:
             if st.session_state.selected_mood:
