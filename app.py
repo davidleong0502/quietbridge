@@ -732,7 +732,6 @@ if page == "Home":
 
     with mid[1]:
         # 1) pull selection from URL click (tile click)
-        clicked = _get_query_mood()
         if clicked in sum(mood_grid, []):  # flatten and validate
             st.session_state.selected_mood = clicked
             st.session_state.selected_mode = mood_to_num(clicked)
@@ -751,7 +750,6 @@ if page == "Home":
             if st.button("Clear", use_container_width=True):
                 st.session_state.selected_mood = None
                 st.session_state.selected_mode = None
-                _set_query_mood(None)
                 st.rerun()
 
     bottom = st.columns([1, 8, 1])
