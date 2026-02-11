@@ -1,6 +1,7 @@
 import time
 import random
 import streamlit as st
+import urllib.parse
 
 def apply_quietbridge_theme():
     st.markdown(
@@ -582,41 +583,27 @@ def render_mood_tiles(mood_grid: list[list[str]], selected_mood: str | None):
         "Serene":    ("#86A96B", "#1D1D1D"),
     }
 
-    for r, row in enumerate(mood_grid):
-        cols = st.columns(4, gap="small")
-        for c, word in enumerate(row):
+    # 1) Read click from URL query param (same Streamlit app, not a new site)
+    qp = st.query_params
+    clicked = qp.get("mood", None)
+    if clicked:
+        st.session_state.selected_mood = clicked
+        st.session_state.selected_mode = mood_to_num(clicked)
+        st.query_params.clear()  # remove ?mood=... immediately
+
+    # 2) Render your tile grid using your existing qb CSS
+    html = ["<div class='qb-mood-grid'>"]
+    for row in mood_grid:
+        for word in row:
             bg, fg = COLORS.get(word, ("#FFFFFF", "#111111"))
+            cls = "qb-tile" + (" selected" if word == selected_mood else "")
+            q = urllib.parse.quote(word)
+            html.append(
+                f"<a class='{cls}' href='?mood={q}' style='background:{bg}; color:{fg};'>{word}</a>"
+            )
+    html.append("</div>")
 
-            # style each button via markdown + container trick
-            with cols[c]:
-                selected = (word == selected_mood)
-                border = "4px solid rgba(255,255,255,0.70)" if selected else "2px solid rgba(255,255,255,0.55)"
-                shadow = "0 0 0 3px rgba(0,0,0,0.10), 0 16px 34px rgba(0,0,0,0.14)" if selected else "0 10px 24px rgba(0,0,0,0.07)"
-
-                st.markdown(
-                    f"""
-                    <style>
-                    div[data-testid="stButton"] > button#{word.replace(" ","_")}_{r}_{c} {{
-                        width: 100%;
-                        height: 84px;
-                        border-radius: 16px;
-                        background: {bg};
-                        color: {fg};
-                        font-weight: 800;
-                        font-size: 1.05rem;
-                        letter-spacing: -0.2px;
-                        border: {border};
-                        box-shadow: {shadow};
-                    }}
-                    </style>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-                if st.button(word, key=f"{word}_{r}_{c}"):
-                    st.session_state.selected_mood = word
-                    st.session_state.selected_mode = mood_to_num(word)
-                    st.rerun()
+    st.markdown("".join(html), unsafe_allow_html=True)
 
 
 
@@ -750,13 +737,6 @@ if page == "Home":
         st.caption("⬇️ Lower energy")
 
     st.divider()
-
-
-    if st.session_state.selected_mood:
-        st.success(f"Selected: **{st.session_state.selected_mood}**")
-        st.caption("Click a different word anytime to change it.")
-    else:
-        st.info("Select a word above.")
 
     if st.button("Save mood", use_container_width=True):
         if not st.session_state.selected_mode:
