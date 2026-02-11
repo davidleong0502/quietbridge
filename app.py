@@ -716,27 +716,13 @@ if page == "Home":
 
     st.markdown("#### Mood meter")
 
-top = st.columns([1, 8, 1])
-with top[1]:
-    st.caption("⬆️ Higher energy")
+    top = st.columns([1, 8, 1])
+    with top[1]:
+        st.caption("⬆️ Higher energy")
 
-mid = st.columns([1, 8, 1])
+    mid = st.columns([1, 8, 1])
 
-with mid[0]:
-    st.markdown(
-        """
-        <div style="height: 100%; display:flex; align-items:center; justify-content:center;">
-            <span style="writing-mode: vertical-rl; transform: rotate(180deg); opacity:0.75;">
-                Unpleasant ⟵ Pleasant
-            </span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Option 1: Streamlit-native buttons + strong selection indicator
     with mid[1]:
-        # !!!!!!!!
         # 1) pull selection from URL click (tile click)
         clicked = _get_query_mood()
         if clicked in sum(mood_grid, []):  # flatten and validate
@@ -759,25 +745,13 @@ with mid[0]:
                 st.session_state.selected_mode = None
                 _set_query_mood(None)
                 st.rerun()
-        # !!!!!!!!
-
-    with mid[2]:
-        st.markdown(
-            """
-            <div style="height: 100%; display:flex; align-items:center; justify-content:center;">
-                <span style="writing-mode: vertical-rl; opacity:0.75;">
-                    Pleasant ⟶ Unpleasant
-                </span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
 
     bottom = st.columns([1, 8, 1])
     with bottom[1]:
         st.caption("⬇️ Lower energy")
 
     st.divider()
+
 
     if st.session_state.selected_mood:
         st.success(f"Selected: **{st.session_state.selected_mood}**")
