@@ -1,8 +1,26 @@
+# app.py — QuietBridge (no URL navigation for mood tiles)
+
 import time
 import random
-import streamlit as st
-import urllib.parse
+import json
+import datetime
+from pathlib import Path
+from datetime import date, timedelta
 
+import streamlit as st
+import pandas as pd
+import altair as alt
+
+# Optional (safe to keep even if unused right now)
+from PIL import Image, ImageDraw
+from streamlit_image_coordinates import streamlit_image_coordinates
+
+from mood_logic import mood_to_num, simple_insight
+
+
+# ==============================
+# THEME
+# ==============================
 def apply_quietbridge_theme():
     st.markdown(
         """
@@ -10,15 +28,12 @@ def apply_quietbridge_theme():
         :root { color-scheme: light !important; }
         html, body { color-scheme: light !important; }
 
-        /* ---------- Base (Option 1) ---------- */
         .stApp {
             background: linear-gradient(180deg, #EAF3FF 0%, #F6FAFF 55%, #FFFFFF 100%);
             color: #0F172A;
         }
 
-        [data-testid="stAppViewContainer"] {
-            color: #0F172A;
-        }
+        [data-testid="stAppViewContainer"] { color: #0F172A; }
 
         h1, h2, h3, h4 {
             color: #0B1220 !important;
@@ -27,41 +42,31 @@ def apply_quietbridge_theme():
 
         .qb-muted { color: #475569 !important; }
 
-        /* ---------- Layout / Centering ---------- */
         .block-container {
             max-width: 720px;
             padding-top: 2.2rem;
         }
 
-        h1 {
-            text-align: center;
-            margin-bottom: 0.25rem;
-        }
-
+        h1 { text-align: center; margin-bottom: 0.25rem; }
         h2, h3 { text-align: center; }
 
         [data-testid="stCaptionContainer"],
-        [data-testid="stMarkdownContainer"] p {
-            text-align: center;
-        }
+        [data-testid="stMarkdownContainer"] p { text-align: center; }
 
-        /* Sidebar */
         section[data-testid="stSidebar"] {
             background: rgba(255,255,255,0.80);
             border-right: 1px solid rgba(15, 23, 42, 0.08);
             backdrop-filter: blur(8px);
         }
 
-        /* Sidebar text: force darker + full opacity */
         section[data-testid="stSidebar"],
         section[data-testid="stSidebar"] * {
           color: #0F172A !important;
           opacity: 1 !important;
         }
-        
-        /* Radio labels in the sidebar (this is usually the culprit) */
+
         section[data-testid="stSidebar"] label,
-        section[data-testid="stSidebar"] label * ,
+        section[data-testid="stSidebar"] label *,
         section[data-testid="stSidebar"] [role="radiogroup"] label,
         section[data-testid="stSidebar"] [role="radiogroup"] label * {
           color: #0F172A !important;
@@ -69,15 +74,12 @@ def apply_quietbridge_theme():
           font-weight: 500 !important;
         }
 
-
-        /* Inputs */
         .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
             border-radius: 12px !important;
             border: 1px solid rgba(15, 23, 42, 0.18) !important;
             background: rgba(255,255,255,0.95) !important;
         }
 
-        /* Primary button */
         div.stButton > button:first-child {
             background: #FF6B6B;
             color: white;
@@ -88,7 +90,6 @@ def apply_quietbridge_theme():
         }
         div.stButton > button:first-child:hover { background: #FF5252; }
 
-        /* ---------- Your QB components ---------- */
         .qb-card {
           background: rgba(255,255,255,0.75);
           border: 1px solid rgba(0,0,0,0.06);
@@ -199,7 +200,6 @@ def apply_quietbridge_theme():
 
         .qb-mini { font-size: 0.86rem; opacity: 0.80; margin-top: 6px; }
         .qb-title { font-weight: 800; font-size: 1.05rem; margin-bottom: 8px; }
-        .qb-emoji { filter: drop-shadow(0px 6px 12px rgba(0,0,0,0.12)); }
 
         .qb-heatmap {
           margin-top: 10px;
@@ -209,73 +209,46 @@ def apply_quietbridge_theme():
           border: 1px solid rgba(0,0,0,0.06);
         }
 
-        .qb-mood-grid{
-          display:grid;
+        /* Mood grid container */
+        .qb-grid {
+          display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: 10px;
           margin: 10px auto 6px auto;
           max-width: 720px;
         }
 
-        .qb-tile{
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          height: 84px;
-          border-radius: 16px;
-          text-decoration:none !important;
-          font-weight: 800;
-          font-size: 1.05rem;
-          letter-spacing: -0.2px;
-          border: 2px solid rgba(255,255,255,0.55);
-          box-shadow: 0 10px 24px rgba(0,0,0,0.07);
-          transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
-          user-select:none;
+        /* Make buttons look like tiles ONLY inside qb-grid */
+        .qb-grid div[data-testid="stButton"] > button {
+          width: 100% !important;
+          height: 84px !important;
+          border-radius: 16px !important;
+          font-weight: 800 !important;
+          font-size: 1.05rem !important;
+          letter-spacing: -0.2px !important;
+          border: 2px solid rgba(255,255,255,0.55) !important;
+          box-shadow: 0 10px 24px rgba(0,0,0,0.07) !important;
+          transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease !important;
+        }
+        .qb-grid div[data-testid="stButton"] > button:hover {
+          transform: translateY(-2px) scale(1.01) !important;
+          box-shadow: 0 14px 30px rgba(0,0,0,0.10) !important;
+          filter: saturate(1.04) !important;
         }
 
-        .qb-tile:hover{
-          transform: translateY(-2px) scale(1.01);
-          box-shadow: 0 14px 30px rgba(0,0,0,0.10);
-          filter: saturate(1.04);
+        /* Selected tile wrapper adds outline */
+        .qb-selected div[data-testid="stButton"] > button {
+          outline: 4px solid rgba(255,255,255,0.70) !important;
+          box-shadow: 0 0 0 3px rgba(0,0,0,0.10), 0 16px 34px rgba(0,0,0,0.14) !important;
         }
-
-        .qb-tile.selected{
-          outline: 4px solid rgba(255,255,255,0.70);
-          box-shadow: 0 0 0 3px rgba(0,0,0,0.10), 0 16px 34px rgba(0,0,0,0.14);
-        }
-
-        .qb-axes{ max-width: 720px; margin: 0 auto; opacity: 0.82; font-size: 0.92rem; }
-        .qb-axes-row{ display:flex; justify-content:space-between; margin: 6px 0; }
-        .qb-axes-mid{ display:flex; justify-content:space-between; align-items:center; margin: 6px 0 4px 0; }
-        .qb-axes-mid .v{ writing-mode: vertical-rl; transform: rotate(180deg); }
-        .qb-axes-mid .v2{ writing-mode: vertical-rl; }
-        .qb-axes-mid .spacer{ width: 1px; }
         </style>
         """,
         unsafe_allow_html=True
     )
 
+
 apply_quietbridge_theme()
 
-
-
-from PIL import Image, ImageDraw
-from streamlit_image_coordinates import streamlit_image_coordinates
-import datetime
-
-# !!!!!!!!
-from datetime import date, timedelta  #can delete this since im gonna use the whole of datetime
-from pathlib import Path
-import json
-
-import pandas as pd
-import altair as alt
-# !!!!!!!!
-
-from mood_logic import (
-    mood_to_num,
-    simple_insight,
-)
 
 # ==============================
 # SHARED STATE (ALL USERS ON THIS SERVER)
@@ -283,44 +256,51 @@ from mood_logic import (
 @st.cache_resource
 def shared_state():
     return {
-        "chat": [],        # shared chat messages
-        "study": [],       # names of users in silent study
-        "bulletins": [],   # list of bulletin posts
-        "replies": {},     # post_id -> list of replies
+        "chat": [],
+        "study": [],
+        "bulletins": [],
+        "replies": {},  # post_id -> list of replies
     }
+
 
 SHARED = shared_state()
 
-# !!!!!!!!
-# ==============================
-# DAILY CHECK-IN STREAK (ADVANCED)
-# ==============================
 
+# ==============================
+# PERSISTENCE (JSON files)
+# ==============================
 CHECKINS_PATH = Path("checkins.json")
+MOODS_PATH = Path("moods.json")
+
+
+def _load_json_list(path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def _save_json_list(path: Path, rows: list[dict]) -> None:
+    path.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
+
 
 def _load_checkins() -> list[dict]:
-    if not CHECKINS_PATH.exists():
-        return []
-    try:
-        return json.loads(CHECKINS_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return []
+    return _load_json_list(CHECKINS_PATH)
+
 
 def _save_checkins(checkins: list[dict]) -> None:
-    CHECKINS_PATH.write_text(json.dumps(checkins, ensure_ascii=False, indent=2), encoding="utf-8")
+    _save_json_list(CHECKINS_PATH, checkins)
 
-MOODS_PATH = Path("moods.json") #added mood history to store moods
 
 def _load_moods() -> list[dict]:
-    if not MOODS_PATH.exists():
-        return []
-    try:
-        return json.loads(MOODS_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return []
+    return _load_json_list(MOODS_PATH)
+
 
 def _save_moods(moods: list[dict]) -> None:
-    MOODS_PATH.write_text(json.dumps(moods, ensure_ascii=False, indent=2), encoding="utf-8")
+    _save_json_list(MOODS_PATH, moods)
+
 
 def _upsert_today_checkin(checkins: list[dict], word: str, mode: str) -> list[dict]:
     """
@@ -336,6 +316,7 @@ def _upsert_today_checkin(checkins: list[dict], word: str, mode: str) -> list[di
     out.sort(key=lambda x: x.get("date", ""))
     return out
 
+
 def _unique_dates(checkins: list[dict]) -> set[date]:
     out = set()
     for c in checkins:
@@ -344,16 +325,12 @@ def _unique_dates(checkins: list[dict]) -> set[date]:
             out.add(date.fromisoformat(d))
     return out
 
+
 def compute_streaks(checkins: list[dict], grace_days: int = 0) -> dict:
-    """
-    grace_days=0 strict streak
-    grace_days=1 gentle streak: allows 1 missed day while counting
-    """
     days = _unique_dates(checkins)
     if not days:
         return {"current": 0, "best": 0}
 
-    # current streak (strictly from today backwards; gentle allows misses)
     cur = 0
     misses = 0
     cursor = date.today()
@@ -366,7 +343,6 @@ def compute_streaks(checkins: list[dict], grace_days: int = 0) -> dict:
                 break
         cursor -= timedelta(days=1)
 
-    # best streak (scan day-by-day across history)
     sorted_days = sorted(days)
     best = 0
     for start in sorted_days:
@@ -385,6 +361,7 @@ def compute_streaks(checkins: list[dict], grace_days: int = 0) -> dict:
 
     return {"current": cur, "best": best}
 
+
 def week_progress(checkins: list[dict], goal: int = 5) -> tuple[int, int]:
     today = date.today()
     y, w, _ = today.isocalendar()
@@ -392,13 +369,13 @@ def week_progress(checkins: list[dict], goal: int = 5) -> tuple[int, int]:
     cnt = sum(1 for d in days if d.isocalendar()[:2] == (y, w))
     return cnt, goal
 
+
 def mood_stats_7d(checkins: list[dict]) -> dict:
     if not checkins:
         return {"avg_level": None, "top_word": None}
 
     today = date.today()
     cutoff = today - timedelta(days=6)
-
     last7 = [c for c in checkins if c.get("date") and date.fromisoformat(c["date"]) >= cutoff]
     if not last7:
         return {"avg_level": None, "top_word": None}
@@ -414,16 +391,12 @@ def mood_stats_7d(checkins: list[dict]) -> dict:
 
     return {"avg_level": avg, "top_word": top_word}
 
+
 def calendar_heatmap(checkins: list[dict], weeks: int = 16):
-    """
-    GitHub-style heatmap for the last N weeks.
-    level: 0 (no check-in) to 4
-    """
     if not checkins:
         st.info("No check-ins yet.")
         return
 
-    # latest level per day
     day_level = {}
     for c in checkins:
         if c.get("date"):
@@ -461,8 +434,8 @@ def calendar_heatmap(checkins: list[dict], weeks: int = 16):
 
     st.altair_chart(chart, use_container_width=True)
 
+
 def render_streak_card_polished(checkins: list[dict]):
-    # Gentle mode toggle (Streamlit widget)
     gentle = st.toggle("Gentle streak mode (1-day grace)", value=True)
     grace = 1 if gentle else 0
 
@@ -470,73 +443,62 @@ def render_streak_card_polished(checkins: list[dict]):
     wk, goal = week_progress(checkins, goal=5)
     stats = mood_stats_7d(checkins)
 
-    # Today status
     today_iso = date.today().isoformat()
     checked_today = any(c.get("date") == today_iso for c in checkins)
 
-    # confetti once per day-save / on first render after save
     if "last_seen_checkin_date" not in st.session_state:
         st.session_state.last_seen_checkin_date = None
 
-    # If user just checked in today and we haven't celebrated yet:
     if checked_today and st.session_state.last_seen_checkin_date != today_iso:
-        # small celebration (won't spam)
         st.balloons()
         st.session_state.last_seen_checkin_date = today_iso
 
-    # Weekly progress percent
     pct = 0 if goal <= 0 else min(100, int((wk / goal) * 100))
-
-    # Pretty numbers
     avg = "-" if stats["avg_level"] is None else f"{stats['avg_level']:.2f}"
     top_word = stats["top_word"]
 
-    # Choose “highlight” mood label based on streak
     if streaks["current"] >= 7:
-        vibe = "You’re on fire this week"
+        vibe = "Strong week"
     elif streaks["current"] >= 3:
         vibe = "Nice momentum"
     elif streaks["current"] >= 1:
-        vibe = "Great start"
+        vibe = "Good start"
     else:
-        vibe = "Start a gentle streak today"
+        vibe = "Start today"
 
-    # Build card HTML
-    status_text = "✅ Checked in today" if checked_today else "Not checked in yet"
+    status_text = "Checked in today" if checked_today else "Not checked in yet"
     status_dot = "rgba(0,180,120,0.85)" if checked_today else "rgba(255,140,0,0.85)"
-
-    # Pulse the “Current streak” badge if checked today (feels alive)
     pulse_class = "qb-badge qb-pulse" if checked_today else "qb-badge"
 
     st.markdown(
         f"""
         <div class="qb-card">
-          <div class="qb-title"><span class="qb-emoji">🔥</span> Daily check-in streak</div>
+          <div class="qb-title">Daily check-in streak</div>
 
           <div class="qb-row" style="align-items:center; margin-bottom: 10px;">
             <span class="qb-pill">
               <span class="dot" style="background:{status_dot};"></span>
               <b>{status_text}</b>
             </span>
-            <span class="qb-pill"><span class="qb-emoji">💬</span> {vibe}</span>
-            {"<span class='qb-pill'><span class='qb-emoji'>🌟</span> Most common (7d): <b>"+top_word+"</b></span>" if top_word else ""}
+            <span class="qb-pill">{vibe}</span>
+            {"<span class='qb-pill'>Most common (7d): <b>"+top_word+"</b></span>" if top_word else ""}
           </div>
 
           <div class="qb-row">
             <div class="{pulse_class}">
-              <div class="big">🔥 {streaks["current"]}</div>
+              <div class="big">{streaks["current"]}</div>
               <div class="label">Current streak</div>
             </div>
             <div class="qb-badge">
-              <div class="big">🏆 {streaks["best"]}</div>
+              <div class="big">{streaks["best"]}</div>
               <div class="label">Best streak</div>
             </div>
             <div class="qb-badge">
-              <div class="big">📈 {avg}</div>
+              <div class="big">{avg}</div>
               <div class="label">Avg level (7 days)</div>
             </div>
             <div class="qb-badge">
-              <div class="big">📅 {wk}/{goal}</div>
+              <div class="big">{wk}/{goal}</div>
               <div class="label">Weekly goal</div>
             </div>
           </div>
@@ -549,20 +511,22 @@ def render_streak_card_polished(checkins: list[dict]):
             <div class="qb-progress-bar" aria-label="weekly-progress">
               <div class="qb-progress-fill" style="width:{pct}%;"></div>
             </div>
-            <div class="qb-mini">Tip: gentle consistency beats perfection</div>
+            <div class="qb-mini">Consistency beats perfection</div>
           </div>
 
           <div class="qb-heatmap">
-            <div class="qb-mini" style="margin-bottom:6px;"><b>Last 16 weeks</b> (darker = higher level)</div>
+            <div class="qb-mini" style="margin-bottom:6px;"><b>Last 16 weeks</b></div>
         """,
         unsafe_allow_html=True,
     )
 
-    # embed heatmap
     calendar_heatmap(checkins, weeks=16)
-
     st.markdown("</div></div>", unsafe_allow_html=True)
 
+
+# ==============================
+# MOOD TILES (NO LINKS, NO URL CHANGE)
+# ==============================
 def render_mood_tiles(mood_grid: list[list[str]], selected_mood: str | None):
     COLORS = {
         "Excited":   ("#9F3B39", "#FFFFFF"),
@@ -583,34 +547,41 @@ def render_mood_tiles(mood_grid: list[list[str]], selected_mood: str | None):
         "Serene":    ("#86A96B", "#1D1D1D"),
     }
 
-    # 1) Read click from URL query param (same Streamlit app, not a new site)
-    qp = st.query_params
-    clicked = qp.get("mood", None)
-    if clicked:
-        st.session_state.selected_mood = clicked
-        st.session_state.selected_mode = mood_to_num(clicked)
-        st.query_params.clear()  # remove ?mood=... immediately
+    # Flatten (row-major) so nth-child styling is stable and reliable
+    flat = [w for row in mood_grid for w in row]
 
-    # 2) Render your tile grid using your existing qb CSS
-    html = ["<div class='qb-mood-grid'>"]
-    for row in mood_grid:
-        for word in row:
-            bg, fg = COLORS.get(word, ("#FFFFFF", "#111111"))
-            cls = "qb-tile" + (" selected" if word == selected_mood else "")
-            q = urllib.parse.quote(word)
-            html.append(
-                f"<a class='{cls}' href='?mood={q}' style='background:{bg}; color:{fg};'>{word}</a>"
-            )
-    html.append("</div>")
+    # CSS: color each tile by position (1..16). Also mark selected with qb-selected wrapper.
+    css_lines = ["<style>"]
+    for i, word in enumerate(flat, start=1):
+        bg, fg = COLORS.get(word, ("#FFFFFF", "#111111"))
+        css_lines.append(
+            f""".qb-grid div[data-testid="stButton"]:nth-child({i}) > button {{
+                 background: {bg} !important;
+                 color: {fg} !important;
+               }}"""
+        )
+    css_lines.append("</style>")
 
-    st.markdown("".join(html), unsafe_allow_html=True)
+    st.markdown("".join(css_lines), unsafe_allow_html=True)
 
+    st.markdown("<div class='qb-grid'>", unsafe_allow_html=True)
 
+    for i, word in enumerate(flat):
+        wrapper_class = "qb-selected" if word == selected_mood else ""
+        st.markdown(f"<div class='{wrapper_class}'>", unsafe_allow_html=True)
 
-# !!!!!!!!
+        if st.button(word, key=f"moodbtn_{i}"):
+            st.session_state.selected_mood = word
+            st.session_state.selected_mode = mood_to_num(word)
+            st.rerun()
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
 
 # ==============================
-# PRIVATE SESSION (PER USER)
+# SESSION STATE INIT
 # ==============================
 if "pending_nav" not in st.session_state:
     st.session_state.pending_nav = None
@@ -624,12 +595,10 @@ if "name" not in st.session_state:
     st.session_state.name = random.choice(ADJ) + random.choice(NOUN)
 
 if "moods" not in st.session_state:
-    st.session_state.moods = _load_moods()  # stores mood history (persisted to disk)
+    st.session_state.moods = _load_moods()
 
-# !!!!!!!!
 if "checkins" not in st.session_state:
     st.session_state.checkins = _load_checkins()
-# !!!!!!!!
 
 if "reflections" not in st.session_state:
     st.session_state.reflections = []
@@ -637,46 +606,40 @@ if "reflections" not in st.session_state:
 if "chat_count" not in st.session_state:
     st.session_state.chat_count = 0
 
-# mood-meter UI selection state
 if "selected_mood" not in st.session_state:
     st.session_state.selected_mood = None
 
 if "selected_mode" not in st.session_state:
     st.session_state.selected_mode = None
 
-# (optional) keep raw mood words for analytics later
 if "mood_words" not in st.session_state:
     st.session_state.mood_words = []
 
-# save mood flow state
 if "last_mood" not in st.session_state:
     st.session_state.last_mood = None
+
 if "support_mode" not in st.session_state:
     st.session_state.support_mode = None
 
-# ==============================
-# UI CONFIG
-# ==============================
 
+# ==============================
+# UI
+# ==============================
 st.title("QuietBridge")
 st.caption(f"You are: **{st.session_state.name}**")
 
 PAGES = ["Home", "Chatroom", "Silent Co-Study", "Reflection", "Community Query", "Dashboard"]
 
-# 1) Ensure nav exists (so radio can store selection)
 if "nav" not in st.session_state:
     st.session_state.nav = "Home"
 
-# 2) If guided match asked to jump, set nav BEFORE the widget is created
 if st.session_state.pending_nav in PAGES:
     st.session_state.nav = st.session_state.pending_nav
     st.session_state.pending_nav = None
 
-# 3) Keyed widget remembers selection across reruns
 page = st.sidebar.radio("Navigate", PAGES, key="nav")
-
-# clear pending nav after it's applied
 st.session_state.pending_nav = None
+
 
 # ==============================
 # HOME
@@ -685,22 +648,15 @@ if page == "Home":
     st.subheader("How are you feeling right now?")
     st.caption("Tap a word. First instinct is fine.")
 
-    # !!!!!!!!
     render_streak_card_polished(st.session_state.checkins)
     st.divider()
 
-
     with st.expander("Streak settings"):
-      if st.button("Reset streak data (demo)", type="secondary"):
-        st.session_state.checkins = []
-        _save_checkins([])
-        st.success("Streak data cleared.")
-        st.rerun()
-    # !!!!!!!!
-
-    def pick_word(word: str):
-        st.session_state.selected_mood = word
-        st.session_state.selected_mode = mood_to_num(word)
+        if st.button("Reset streak data (demo)", type="secondary"):
+            st.session_state.checkins = []
+            _save_checkins([])
+            st.success("Streak data cleared.")
+            st.rerun()
 
     mood_grid = [
         ["Excited", "Joyful", "Motivated", "Inspired"],
@@ -713,10 +669,9 @@ if page == "Home":
 
     top = st.columns([1, 8, 1])
     with top[1]:
-        st.caption("⬆️ Higher energy")
+        st.caption("Higher energy")
 
     mid = st.columns([1, 8, 1])
-
     with mid[1]:
         render_mood_tiles(mood_grid, st.session_state.selected_mood)
 
@@ -734,7 +689,7 @@ if page == "Home":
 
     bottom = st.columns([1, 8, 1])
     with bottom[1]:
-        st.caption("⬇️ Lower energy")
+        st.caption("Lower energy")
 
     st.divider()
 
@@ -742,51 +697,27 @@ if page == "Home":
         if not st.session_state.selected_mode:
             st.warning("Pick a mood word first.")
         else:
-            # !!!!!!!!
-            # keep your existing behavior
-            st.session_state.moods.append({"mood": st.session_state.selected_mood, "timestamp": time.time()})
-            _save_moods(st.session_state.moods)  # persist to disk
+            st.session_state.moods.append(
+                {"mood": st.session_state.selected_mood, "timestamp": time.time()}
+            )
+            _save_moods(st.session_state.moods)
+
             st.session_state.last_mood = st.session_state.selected_mode
             st.session_state.mood_words.append(st.session_state.selected_mood)
 
-            # NEW: streak check-in record (one per day, persisted)
             st.session_state.checkins = _upsert_today_checkin(
                 st.session_state.checkins,
                 word=st.session_state.selected_mood,
                 mode=st.session_state.selected_mood,
             )
             _save_checkins(st.session_state.checkins)
-            st.toast("Check-in saved. Proud of you.", icon="✅")
+
+            st.toast("Check-in saved.", icon="✅")
             st.success("Saved.")
-            # !!!!!!!!
 
-
-    # ---- Guided Match ----
-    # if st.session_state.last_mood is not None:
-    #     st.divider()
-    #     st.subheader("What kind of support do you want right now?")
-
-    #     rec = recsupport(st.session_state.last_mood)
-    #     opts = support_options()
-
-    #     cols = st.columns(2)
-    #     clicked = None
-
-    #     for i, (key, title, desc) in enumerate(opts):
-    #         with cols[i % 2]:
-    #             label = f"{title}" + (" ⭐" if key == rec else "")
-    #             if st.button(label, use_container_width=True):
-    #                 clicked = key
-    #             st.caption(desc)
-
-    #     if clicked:
-    #         st.session_state.support_mode = clicked
-    #         st.session_state.guided_banner = guided_prompt(clicked, st.session_state.last_mood)
-    #         st.session_state.pending_nav = guided_next_page(clicked)
-    #         st.rerun()
 
 # ==============================
-# QUIET CHAT
+# CHATROOM
 # ==============================
 elif page == "Chatroom":
     st.subheader("A gentle shared space to talk")
@@ -803,15 +734,12 @@ elif page == "Chatroom":
 
     if st.button("Send"):
         if msg.strip():
-            SHARED["chat"].append({
-                "u": st.session_state.name,
-                "t": msg.strip(),
-                "time": time.time()
-            })
+            SHARED["chat"].append({"u": st.session_state.name, "t": msg.strip(), "time": time.time()})
             st.session_state.chat_count += 1
             st.rerun()
         else:
             st.warning("Type something first.")
+
 
 # ==============================
 # SILENT CO-STUDY
@@ -823,7 +751,6 @@ elif page == "Silent Co-Study":
     st.subheader("Silent Co-Study")
     st.caption("No chat needed. Just presence.")
 
-    # Join/Leave centered
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
         if st.session_state.name in room:
@@ -841,23 +768,20 @@ elif page == "Silent Co-Study":
     st.markdown(f"## **{n}** quiet souls")
     st.caption("Each lamp is a person studying right now.")
 
-    # lamp indicator (cap to avoid giant rows)
     max_icons = 24
     lit = min(n, max_icons)
     extra = max(0, n - max_icons)
 
     icons = "💡" * lit + (f" +{extra}" if extra else "")
-    st.markdown(
-        f"<div style='font-size: 34px; line-height: 1.6;'>{icons}</div>",
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"<div style='font-size: 34px; line-height: 1.6;'>{icons}</div>", unsafe_allow_html=True)
 
     st.divider()
 
     if room:
         with st.expander("See who’s here", expanded=False):
             for u in room:
-                st.write(f"• {u}")
+                st.write(f"- {u}")
+
 
 # ==============================
 # REFLECTION
@@ -866,11 +790,7 @@ elif page == "Reflection":
     st.subheader("Prompt of the day")
     st.write("What is one small thing you survived today?")
 
-    text = st.text_area(
-        "Reflection",
-        height=150,
-        label_visibility="collapsed"
-    )
+    text = st.text_area("Reflection", height=150, label_visibility="collapsed")
 
     if st.button("Save reflection"):
         if text.strip():
@@ -885,8 +805,9 @@ elif page == "Reflection":
         for r in reversed(st.session_state.reflections[-3:]):
             st.write(f"- {r}")
 
+
 # ==============================
-# BULLETIN BOARD
+# COMMUNITY QUERY
 # ==============================
 elif page == "Community Query":
     st.subheader("Community Query")
@@ -907,20 +828,22 @@ elif page == "Community Query":
                 st.warning("Please fill in both title and details.")
             else:
                 post_id = f"p_{int(time.time() * 1000)}_{random.randint(1000, 9999)}"
-                SHARED["bulletins"].append({
-                    "id": post_id,
-                    "title": title.strip(),
-                    "body": body.strip(),
-                    "author": None if post_anon else st.session_state.name,
-                    "time": time.time(),
-                })
+                SHARED["bulletins"].append(
+                    {
+                        "id": post_id,
+                        "title": title.strip(),
+                        "body": body.strip(),
+                        "author": None if post_anon else st.session_state.name,
+                        "time": time.time(),
+                    }
+                )
                 SHARED["replies"].setdefault(post_id, [])
                 st.success("Posted.")
                 st.rerun()
 
     st.divider()
 
-    posts = list(reversed(SHARED["bulletins"]))  # newest first
+    posts = list(reversed(SHARED["bulletins"]))
     if not posts:
         st.info("No posts yet. Be the first to start the board.")
     else:
@@ -941,7 +864,7 @@ elif page == "Community Query":
                 if replies:
                     st.write("**Replies:**")
                     for r in replies[-10:]:
-                        st.write(f"• {r['text']}")
+                        st.write(f"- {r['text']}")
                 else:
                     st.caption("No replies yet.")
 
@@ -950,23 +873,22 @@ elif page == "Community Query":
                         "Reply (anonymous)",
                         key=f"reply_{p['id']}",
                         placeholder="Write something helpful and kind…",
-                        height=90
+                        height=90,
                     )
                     submitted = st.form_submit_button("Send reply")
 
                 if submitted:
                     if reply_text.strip():
                         rep_id = f"r_{int(time.time() * 1000)}_{random.randint(1000, 9999)}"
-                        SHARED["replies"].setdefault(p["id"], []).append({
-                            "id": rep_id,
-                            "text": reply_text.strip(),
-                            "time": time.time(),
-                        })
+                        SHARED["replies"].setdefault(p["id"], []).append(
+                            {"id": rep_id, "text": reply_text.strip(), "time": time.time()}
+                        )
                         st.rerun()
                     else:
                         st.warning("Write a reply first.")
 
                 st.divider()
+
 
 # ==============================
 # DASHBOARD
@@ -980,15 +902,12 @@ elif page == "Dashboard":
         mood_values = [mood_to_num(entry["mood"]) for entry in mood_entries]
         mood_timestamps = [datetime.datetime.fromtimestamp(entry["timestamp"]) for entry in mood_entries]
 
-        mood_df = pd.DataFrame({"Date": mood_timestamps, "Mood Score": mood_values})
-        mood_df = mood_df.set_index("Date")
-
+        mood_df = pd.DataFrame({"Date": mood_timestamps, "Mood Score": mood_values}).set_index("Date")
         st.line_chart(mood_df)
 
         st.divider()
 
         col1, col2 = st.columns(2)
-
         with col1:
             st.write("### Summary of your Moods")
             mood_strings = [entry["mood"] for entry in st.session_state.moods]
@@ -997,31 +916,29 @@ elif page == "Dashboard":
             for mood, count in mood_counts.head(3).items():
                 st.write(f"- {mood}: {count} times")
 
-
-            avg_mood_score = sum([mood_to_num(entry["mood"]) for entry in st.session_state.moods]) / len(st.session_state.moods)
+            avg_mood_score = sum(mood_values) / len(mood_values)
             st.write(f"**Average mood score:** {avg_mood_score:.2f} (1=lowest, 4=highest)")
 
         with col2:
             st.write("### An Insight for You")
+            avg_mood_score = sum(mood_values) / len(mood_values)
             if avg_mood_score > 3:
-                st.success("It looks like you've been experiencing predominantly positive moods lately! Keep up the good work.")
+                st.success("Predominantly positive moods lately.")
             elif avg_mood_score > 2:
-                st.info("Your moods are generally balanced. Remember to take moments for self-care.")
+                st.info("Generally balanced moods.")
             else:
-                st.warning("It seems you've been facing some challenges. Consider reaching out or trying a new reflection.")
+                st.warning("Looks like a tougher period. Consider using Reflection or reaching out.")
 
         st.divider()
 
         st.write("### Mood Log")
         st.caption("All moods you've recorded, with timestamps")
 
-        # Display moods in reverse order (newest first)
         for entry in reversed(st.session_state.moods):
             mood = entry["mood"]
-            timestamp = datetime.datetime.fromtimestamp(entry["timestamp"])
-            formatted_time = timestamp.strftime("%B %d, %Y at %I:%M %p")
+            ts = datetime.datetime.fromtimestamp(entry["timestamp"])
+            formatted_time = ts.strftime("%B %d, %Y at %I:%M %p")
             st.write(f"**{mood}** — {formatted_time}")
-
     else:
         st.info("No mood check-ins yet. Start by logging your mood on the Home page!")
 
@@ -1030,7 +947,7 @@ elif page == "Dashboard":
     if st.session_state.chat_count >= 2:
         st.write("You tend to reach out when you check in.")
     elif len(st.session_state.moods) >= 3:
-        st.write("You have been checking in consistently. Keep up the good work!")
+        st.write("You have been checking in consistently.")
     elif len(st.session_state.moods) > 0:
         st.write("You have started tracking your mood.")
     else:
