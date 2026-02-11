@@ -598,21 +598,6 @@ def render_mood_tiles(mood_grid: list[list[str]], selected_mood: str | None):
         "Serene":    ("#86A96B", "#1D1D1D"),
     }
 
-    # axis hints (optional but nice)
-    st.markdown(
-        """
-        <div class="qb-axes">
-          <div class="qb-axes-row"><span>⬆️ Higher energy</span><span>PLEASANT →</span></div>
-          <div class="qb-axes-mid">
-            <span class="v">UNPLEASANT ← PLEASANT</span>
-            <span class="spacer"></span>
-            <span class="v2">PLEASANT → UNPLEASANT</span>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     # tiles grid
     html = ['<div class="qb-mood-grid">']
     for row in mood_grid:
