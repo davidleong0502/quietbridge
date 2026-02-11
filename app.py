@@ -6,6 +6,9 @@ def apply_quietbridge_theme():
     st.markdown(
         """
         <style>
+        :root { color-scheme: light !important; }
+        html, body { color-scheme: light !important; }
+
         /* ---------- Base (Option 1) ---------- */
         .stApp {
             background: linear-gradient(180deg, #EAF3FF 0%, #F6FAFF 55%, #FFFFFF 100%);
