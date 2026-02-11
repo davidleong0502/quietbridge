@@ -2,13 +2,11 @@ import time
 import random
 import streamlit as st
 
-
-st.set_page_config(page_title="QuietBridge", page_icon="🌙", layout="wide")
-
 def apply_quietbridge_theme():
     st.markdown(
         """
         <style>
+        /* ---------- Base (Option 1) ---------- */
         .stApp {
             background: linear-gradient(180deg, #EAF3FF 0%, #F6FAFF 55%, #FFFFFF 100%);
             color: #0F172A;
@@ -19,7 +17,7 @@ def apply_quietbridge_theme():
         }
 
         [data-testid="stAppViewContainer"] {
-    color: #0F172A;
+            color: #0F172A;
         }
 
         h1, h2, h3, h4 {
@@ -29,20 +27,39 @@ def apply_quietbridge_theme():
 
         .qb-muted { color: #475569 !important; }
 
-        .qb-card {
-            background: rgba(255,255,255,0.92);
-            border: 1px solid rgba(15, 23, 42, 0.08);
-            border-radius: 18px;
-            padding: 18px 18px;
-            box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+        /* ---------- Layout / Centering ---------- */
+        .block-container {
+            max-width: 720px;
+            padding-top: 2.2rem;
         }
 
+        h1 {
+            text-align: center;
+            margin-bottom: 0.25rem;
+        }
+
+        h2, h3 { text-align: center; }
+
+        [data-testid="stCaptionContainer"],
+        [data-testid="stMarkdownContainer"] p {
+            text-align: center;
+        }
+
+        /* Sidebar */
+        section[data-testid="stSidebar"] {
+            background: rgba(255,255,255,0.80);
+            border-right: 1px solid rgba(15, 23, 42, 0.08);
+            backdrop-filter: blur(8px);
+        }
+
+        /* Inputs */
         .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
             border-radius: 12px !important;
             border: 1px solid rgba(15, 23, 42, 0.18) !important;
             background: rgba(255,255,255,0.95) !important;
         }
 
+        /* Primary button */
         div.stButton > button:first-child {
             background: #FF6B6B;
             color: white;
@@ -53,18 +70,175 @@ def apply_quietbridge_theme():
         }
         div.stButton > button:first-child:hover { background: #FF5252; }
 
-        section[data-testid="stSidebar"] {
-            background: rgba(255,255,255,0.80);
-            border-right: 1px solid rgba(15, 23, 42, 0.08);
+        /* ---------- Your QB components ---------- */
+        .qb-card {
+          background: rgba(255,255,255,0.75);
+          border: 1px solid rgba(0,0,0,0.06);
+          border-radius: 18px;
+          padding: 14px 14px 12px 14px;
+          box-shadow: 0 10px 24px rgba(0,0,0,0.06);
+          margin: 10px 0 6px 0;
+          backdrop-filter: blur(6px);
+          animation: qbFadeIn 300ms ease-out;
         }
 
-        .block-container { padding-top: 2.2rem; }
+        @keyframes qbFadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0px); }
+        }
+
+        .qb-row {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          justify-content: space-between;
+        }
+
+        .qb-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 10px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.85);
+          border: 1px solid rgba(0,0,0,0.06);
+          font-size: 0.92rem;
+          box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+        }
+
+        .qb-pill .dot {
+          width: 10px; height: 10px; border-radius: 50%;
+          background: rgba(0,0,0,0.18);
+        }
+
+        .qb-badge {
+          padding: 10px 12px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.65));
+          border: 1px solid rgba(0,0,0,0.06);
+          min-width: 160px;
+          flex: 1;
+        }
+
+        .qb-badge .big {
+          font-size: 1.35rem;
+          font-weight: 800;
+          letter-spacing: -0.3px;
+        }
+
+        .qb-badge .label {
+          opacity: 0.75;
+          font-size: 0.86rem;
+          margin-top: 2px;
+        }
+
+        .qb-pulse { animation: qbPulse 1.3s ease-in-out infinite; }
+        @keyframes qbPulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.03); }
+          100% { transform: scale(1); }
+        }
+
+        .qb-progress-wrap {
+          margin-top: 10px;
+          padding: 10px 12px;
+          border-radius: 14px;
+          background: rgba(255,255,255,0.72);
+          border: 1px solid rgba(0,0,0,0.06);
+        }
+
+        .qb-progress-bar {
+          width: 100%;
+          height: 12px;
+          border-radius: 999px;
+          background: rgba(0,0,0,0.06);
+          overflow: hidden;
+          position: relative;
+        }
+
+        .qb-progress-fill {
+          height: 100%;
+          border-radius: 999px;
+          background: linear-gradient(90deg, rgba(255,140,0,0.85), rgba(0,200,140,0.85));
+          position: relative;
+          overflow: hidden;
+        }
+
+        .qb-progress-fill::after {
+          content: "";
+          position: absolute;
+          top: 0; left: -40%;
+          width: 40%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+          animation: qbShimmer 1.6s linear infinite;
+        }
+
+        @keyframes qbShimmer {
+          0% { left: -40%; }
+          100% { left: 100%; }
+        }
+
+        .qb-mini { font-size: 0.86rem; opacity: 0.80; margin-top: 6px; }
+        .qb-title { font-weight: 800; font-size: 1.05rem; margin-bottom: 8px; }
+        .qb-emoji { filter: drop-shadow(0px 6px 12px rgba(0,0,0,0.12)); }
+
+        .qb-heatmap {
+          margin-top: 10px;
+          padding: 10px 10px 6px 10px;
+          border-radius: 14px;
+          background: rgba(255,255,255,0.65);
+          border: 1px solid rgba(0,0,0,0.06);
+        }
+
+        .qb-mood-grid{
+          display:grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 10px;
+          margin: 10px auto 6px auto;
+          max-width: 720px;
+        }
+
+        .qb-tile{
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          height: 84px;
+          border-radius: 16px;
+          text-decoration:none !important;
+          font-weight: 800;
+          font-size: 1.05rem;
+          letter-spacing: -0.2px;
+          border: 2px solid rgba(255,255,255,0.55);
+          box-shadow: 0 10px 24px rgba(0,0,0,0.07);
+          transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+          user-select:none;
+        }
+
+        .qb-tile:hover{
+          transform: translateY(-2px) scale(1.01);
+          box-shadow: 0 14px 30px rgba(0,0,0,0.10);
+          filter: saturate(1.04);
+        }
+
+        .qb-tile.selected{
+          outline: 4px solid rgba(255,255,255,0.70);
+          box-shadow: 0 0 0 3px rgba(0,0,0,0.10), 0 16px 34px rgba(0,0,0,0.14);
+        }
+
+        .qb-axes{ max-width: 720px; margin: 0 auto; opacity: 0.82; font-size: 0.92rem; }
+        .qb-axes-row{ display:flex; justify-content:space-between; margin: 6px 0; }
+        .qb-axes-mid{ display:flex; justify-content:space-between; align-items:center; margin: 6px 0 4px 0; }
+        .qb-axes-mid .v{ writing-mode: vertical-rl; transform: rotate(180deg); }
+        .qb-axes-mid .v2{ writing-mode: vertical-rl; }
+        .qb-axes-mid .spacer{ width: 1px; }
         </style>
         """,
         unsafe_allow_html=True
     )
 
 apply_quietbridge_theme()
+
 
 
 from PIL import Image, ImageDraw
@@ -500,267 +674,6 @@ if "support_mode" not in st.session_state:
 # ==============================
 # UI CONFIG
 # ==============================
-st.set_page_config(page_title="QuietBridge", layout="centered")
-
-# Global theme: pastel blue bg + centered headings/text + softened sidebar/buttons
-st.markdown(
-    """
-<style>
-/* Pastel blue background for the whole app */
-.stApp {
-    background: #EAF4FF;   /* pastel blue */
-}
-
-/* Make content feel less stretched on big screens */
-.block-container {
-    max-width: 720px;
-    padding-top: 2rem;
-}
-
-/* Center the main page title ("QuietBridge") */
-h1 {
-    text-align: center;
-    margin-bottom: 0.25rem;
-}
-
-/* Center common headings */
-h2, h3 {
-    text-align: center;
-}
-
-/* Center captions + normal text blocks you write with st.caption/st.write */
-[data-testid="stCaptionContainer"],
-[data-testid="stMarkdownContainer"] p {
-    text-align: center;
-}
-
-/* Sidebar: slightly translucent to feel softer */
-section[data-testid="stSidebar"] {
-    background: rgba(255, 255, 255, 0.55);
-    backdrop-filter: blur(8px);
-}
-
-/* Buttons: rounded, soft */
-div.stButton > button {
-    border-radius: 14px;
-}
-
-
-/* --- Streak UI card --- */
-.qb-card {
-  background: rgba(255,255,255,0.75);
-  border: 1px solid rgba(0,0,0,0.06);
-  border-radius: 18px;
-  padding: 14px 14px 12px 14px;
-  box-shadow: 0 10px 24px rgba(0,0,0,0.06);
-  margin: 10px 0 6px 0;
-  backdrop-filter: blur(6px);
-  animation: qbFadeIn 300ms ease-out;
-}
-
-@keyframes qbFadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0px); }
-}
-
-.qb-row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: space-between;
-}
-
-.qb-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.85);
-  border: 1px solid rgba(0,0,0,0.06);
-  font-size: 0.92rem;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.04);
-}
-
-.qb-pill .dot {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: rgba(0,0,0,0.18);
-}
-
-.qb-badge {
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.65));
-  border: 1px solid rgba(0,0,0,0.06);
-  min-width: 160px;
-  flex: 1;
-}
-
-.qb-badge .big {
-  font-size: 1.35rem;
-  font-weight: 800;
-  letter-spacing: -0.3px;
-}
-
-.qb-badge .label {
-  opacity: 0.75;
-  font-size: 0.86rem;
-  margin-top: 2px;
-}
-
-.qb-pulse {
-  animation: qbPulse 1.3s ease-in-out infinite;
-}
-
-@keyframes qbPulse {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.03); }
-  100% { transform: scale(1); }
-}
-
-.qb-progress-wrap {
-  margin-top: 10px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.72);
-  border: 1px solid rgba(0,0,0,0.06);
-}
-
-.qb-progress-bar {
-  width: 100%;
-  height: 12px;
-  border-radius: 999px;
-  background: rgba(0,0,0,0.06);
-  overflow: hidden;
-  position: relative;
-}
-
-.qb-progress-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(255,140,0,0.85), rgba(0,200,140,0.85));
-  position: relative;
-  overflow: hidden;
-}
-
-.qb-progress-fill::after {
-  content: "";
-  position: absolute;
-  top: 0; left: -40%;
-  width: 40%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
-  animation: qbShimmer 1.6s linear infinite;
-}
-
-@keyframes qbShimmer {
-  0% { left: -40%; }
-  100% { left: 100%; }
-}
-
-.qb-mini {
-  font-size: 0.86rem;
-  opacity: 0.80;
-  margin-top: 6px;
-}
-
-.qb-title {
-  font-weight: 800;
-  font-size: 1.05rem;
-  margin-bottom: 8px;
-}
-
-.qb-emoji {
-  filter: drop-shadow(0px 6px 12px rgba(0,0,0,0.12));
-}
-
-/* Make the Altair heatmap look embedded */
-.qb-heatmap {
-  margin-top: 10px;
-  padding: 10px 10px 6px 10px;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.65);
-  border: 1px solid rgba(0,0,0,0.06);
-}
-/* ---- Mood tile grid ---- */
-.qb-mood-grid{
-  display:grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin: 10px auto 6px auto;
-  max-width: 720px;
-}
-
-.qb-tile{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  height: 84px;
-  border-radius: 16px;
-  text-decoration:none !important;
-  font-weight: 800;
-  font-size: 1.05rem;
-  letter-spacing: -0.2px;
-  border: 2px solid rgba(255,255,255,0.55);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.07);
-  transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
-  user-select:none;
-}
-
-.qb-tile:hover{
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 14px 30px rgba(0,0,0,0.10);
-  filter: saturate(1.04);
-}
-
-.qb-tile:active{
-  transform: translateY(0px) scale(0.995);
-}
-
-.qb-tile.selected{
-  outline: 4px solid rgba(255,255,255,0.70);
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.10), 0 16px 34px rgba(0,0,0,0.14);
-}
-
-.qb-axes{
-  max-width: 720px;
-  margin: 0 auto;
-  opacity: 0.82;
-  font-size: 0.92rem;
-}
-
-.qb-axes-row{
-  display:flex;
-  justify-content:space-between;
-  margin: 6px 0;
-}
-
-.qb-axes-mid{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin: 6px 0 4px 0;
-}
-
-.qb-axes-mid .v{
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-}
-
-.qb-axes-mid .v2{
-  writing-mode: vertical-rl;
-}
-
-.qb-axes-mid .spacer{
-  width: 1px;
-}
-
-
-
-</style>
-""",
-    unsafe_allow_html=True,
-)
 
 st.title("QuietBridge")
 st.caption(f"You are: **{st.session_state.name}**")
@@ -815,24 +728,23 @@ if page == "Home":
 
     st.markdown("#### Mood meter")
 
-    # axis hints to preserve the "meter" vibe
-    top = st.columns([1, 8, 1])
-    with top[1]:
-        st.caption("⬆️ Higher energy")
+top = st.columns([1, 8, 1])
+with top[1]:
+    st.caption("⬆️ Higher energy")
 
-    mid = st.columns([1, 8, 1])
+mid = st.columns([1, 8, 1])
 
-    with mid[0]:
-        st.markdown(
-            """
-            <div style="height: 100%; display:flex; align-items:center; justify-content:center;">
-                <span style="writing-mode: vertical-rl; transform: rotate(180deg); opacity:0.75;">
-                    Unpleasant ⟵ Pleasant
-                </span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+with mid[0]:
+    st.markdown(
+        """
+        <div style="height: 100%; display:flex; align-items:center; justify-content:center;">
+            <span style="writing-mode: vertical-rl; transform: rotate(180deg); opacity:0.75;">
+                Unpleasant ⟵ Pleasant
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # Option 1: Streamlit-native buttons + strong selection indicator
     with mid[1]:
