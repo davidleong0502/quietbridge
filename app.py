@@ -529,17 +529,25 @@ def render_streak_card_polished(checkins: list[dict]):
 # ==============================
 
 def render_mood_tiles(mood_grid: list[list[str]], selected_mood: str | None):
+    st.markdown("<div class='qb-grid'>", unsafe_allow_html=True)
+
     for r, row in enumerate(mood_grid):
         cols = st.columns(4)
         for c, word in enumerate(row):
             with cols[c]:
-                # highlight selected
-                label = f"✅ {word}" if word == selected_mood else word
+                if word == selected_mood:
+                    st.markdown("<div class='qb-selected'>", unsafe_allow_html=True)
 
-                if st.button(label, key=f"mood_{r}_{c}", use_container_width=True):
+                if st.button(word, key=f"mood_{r}_{c}", use_container_width=True):
                     st.session_state.selected_mood = word
                     st.session_state.selected_mode = mood_to_num(word)
                     st.rerun()
+
+                if word == selected_mood:
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
 
 
 
