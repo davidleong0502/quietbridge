@@ -28,6 +28,14 @@ def apply_quietbridge_theme():
         :root { color-scheme: light !important; }
         html, body { color-scheme: light !important; }
 
+        /* Force the same font everywhere (prevents dark/light mismatch) */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        
+        html, body, .stApp, [data-testid="stAppViewContainer"],
+        [data-testid="stSidebar"], [data-testid="stSidebar"] * {
+          font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+        }
+
         .stApp {
             background: linear-gradient(180deg, #EAF3FF 0%, #F6FAFF 55%, #FFFFFF 100%);
             color: #0F172A;
@@ -229,6 +237,9 @@ def apply_quietbridge_theme():
           border: 2px solid rgba(255,255,255,0.55) !important;
           box-shadow: 0 10px 24px rgba(0,0,0,0.07) !important;
           transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease !important;
+          background: rgba(255,255,255,0.90) !important;
+          color: #0F172A !important;
+
         }
         .qb-grid div[data-testid="stButton"] > button:hover {
           transform: translateY(-2px) scale(1.01) !important;
