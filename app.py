@@ -527,57 +527,20 @@ def render_streak_card_polished(checkins: list[dict]):
 # ==============================
 # MOOD TILES (NO LINKS, NO URL CHANGE)
 # ==============================
+
 def render_mood_tiles(mood_grid: list[list[str]], selected_mood: str | None):
-    COLORS = {
-        "Excited":   ("#9F3B39", "#FFFFFF"),
-        "Joyful":    ("#B76545", "#FFFFFF"),
-        "Motivated": ("#D3A24A", "#1D1D1D"),
-        "Inspired":  ("#E7CF5D", "#1D1D1D"),
-        "Tense":     ("#7C4B5B", "#FFFFFF"),
-        "Alert":     ("#8D6A5B", "#FFFFFF"),
-        "Engaged":   ("#A79A56", "#1D1D1D"),
-        "Proud":     ("#C7BE58", "#1D1D1D"),
-        "Sad":       ("#6C6A88", "#FFFFFF"),
-        "Calm":      ("#7B7E78", "#FFFFFF"),
-        "Content":   ("#8F9966", "#1D1D1D"),
-        "Peaceful":  ("#A6B26A", "#1D1D1D"),
-        "Drained":   ("#4E89B0", "#FFFFFF"),
-        "Tired":     ("#5E97A2", "#FFFFFF"),
-        "Restful":   ("#6E9F86", "#FFFFFF"),
-        "Serene":    ("#86A96B", "#1D1D1D"),
-    }
+    for r, row in enumerate(mood_grid):
+        cols = st.columns(4)
+        for c, word in enumerate(row):
+            with cols[c]:
+                # highlight selected
+                label = f"✅ {word}" if word == selected_mood else word
 
-    # Flatten (row-major) so nth-child styling is stable and reliable
-    flat = [w for row in mood_grid for w in row]
+                if st.button(label, key=f"mood_{r}_{c}", use_container_width=True):
+                    st.session_state.selected_mood = word
+                    st.session_state.selected_mode = mood_to_num(word)
+                    st.rerun()
 
-    # CSS: color each tile by position (1..16). Also mark selected with qb-selected wrapper.
-    css_lines = ["<style>"]
-    for i, word in enumerate(flat, start=1):
-        bg, fg = COLORS.get(word, ("#FFFFFF", "#111111"))
-        css_lines.append(
-            f""".qb-grid div[data-testid="stButton"]:nth-child({i}) > button {{
-                 background: {bg} !important;
-                 color: {fg} !important;
-               }}"""
-        )
-    css_lines.append("</style>")
-
-    st.markdown("".join(css_lines), unsafe_allow_html=True)
-
-    st.markdown("<div class='qb-grid'>", unsafe_allow_html=True)
-
-    for i, word in enumerate(flat):
-        wrapper_class = "qb-selected" if word == selected_mood else ""
-        st.markdown(f"<div class='{wrapper_class}'>", unsafe_allow_html=True)
-
-        if st.button(word, key=f"moodbtn_{i}"):
-            st.session_state.selected_mood = word
-            st.session_state.selected_mode = mood_to_num(word)
-            st.rerun()
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ==============================
