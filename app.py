@@ -15,10 +15,6 @@ def apply_quietbridge_theme():
             color: #0F172A;
         }
 
-        html, body, [class*="css"] {
-            color: #0F172A !important;
-        }
-
         [data-testid="stAppViewContainer"] {
             color: #0F172A;
         }
