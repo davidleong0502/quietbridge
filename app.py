@@ -2,6 +2,71 @@ import time
 import random
 import streamlit as st
 
+
+st.set_page_config(page_title="QuietBridge", page_icon="🌙", layout="wide")
+
+def apply_quietbridge_theme():
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            background: linear-gradient(180deg, #EAF3FF 0%, #F6FAFF 55%, #FFFFFF 100%);
+            color: #0F172A;
+        }
+
+        html, body, [class*="css"] {
+            color: #0F172A !important;
+        }
+
+        [data-testid="stAppViewContainer"] {
+    color: #0F172A;
+        }
+
+        h1, h2, h3, h4 {
+            color: #0B1220 !important;
+            letter-spacing: -0.2px;
+        }
+
+        .qb-muted { color: #475569 !important; }
+
+        .qb-card {
+            background: rgba(255,255,255,0.92);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 18px;
+            padding: 18px 18px;
+            box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+        }
+
+        .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
+            border-radius: 12px !important;
+            border: 1px solid rgba(15, 23, 42, 0.18) !important;
+            background: rgba(255,255,255,0.95) !important;
+        }
+
+        div.stButton > button:first-child {
+            background: #FF6B6B;
+            color: white;
+            border: 1px solid rgba(0,0,0,0.05);
+            border-radius: 12px;
+            padding: 0.55rem 0.9rem;
+            font-weight: 600;
+        }
+        div.stButton > button:first-child:hover { background: #FF5252; }
+
+        section[data-testid="stSidebar"] {
+            background: rgba(255,255,255,0.80);
+            border-right: 1px solid rgba(15, 23, 42, 0.08);
+        }
+
+        .block-container { padding-top: 2.2rem; }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+apply_quietbridge_theme()
+
+
 from PIL import Image, ImageDraw
 from streamlit_image_coordinates import streamlit_image_coordinates
 import datetime
